@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ContourDesigner | 等高線マップ設計</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="header">
+  <div class="brand"><span class="mark" aria-hidden="true">≋</span><div><h1>ContourDesigner</h1><p>画像から、高さの設計図へ。</p></div></div>
+  <div class="file-actions">
+    <button id="loadImage">画像を開く</button><input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+    <button id="loadProject">設計を開く</button><input id="projectFile" type="file" accept="application/json,.json" hidden>
+    <button id="saveProject" class="primary">設計を保存</button>
+  </div>
+</header>
+<div class="document-bar"><input id="projectName" aria-label="設計名" maxlength="80" value="丘と水辺の高さ設計"><span id="saveState" role="status">この端末で作業</span><span class="local-label">オフライン対応 · Unity不要</span></div>
+<main class="workspace">
+  <section class="drawing-area" aria-label="地図の編集">
+    <div class="map-toolbar" role="toolbar" aria-label="編集ツール">
+      <div class="modes">
+        <button data-mode="select" class="active" aria-pressed="true">選択</button>
+        <button data-mode="draw" aria-pressed="false">等高線を描く</button>
+        <button data-mode="pin" aria-pressed="false">高さの点</button>
+        <button data-mode="frame" aria-pressed="false">地図の範囲</button>
+        <button data-mode="pan" aria-pressed="false">移動</button>
+      </div>
+      <div class="view-actions"><button id="undo" aria-label="元に戻す">↶</button><button id="redo" aria-label="やり直す">↷</button><button id="zoomOut" aria-label="縮小">−</button><button id="zoomIn" aria-label="拡大">＋</button><button id="fit">全体表示</button></div>
+    </div>
+    <div class="draw-options" id="drawOptions" hidden>
+      <label>描き方 <select id="drawStyle"><option value="points">点を置いて描く</option><option value="freehand">手でなぞる</option></select></label>
+      <label><input id="closedLine" type="checkbox" checked> 閉じた線</label>
+      <label><input id="snapEndpoints" type="checkbox" checked> 同じ高さの端点に吸着</label>
+      <label>高さ <input id="newHeight" type="number" step="0.5" min="-100" max="200" value="4"> m</label>
+      <button id="finishLine" class="primary">線を確定</button><button id="cancelLine">取り消す</button>
+    </div>
+    <div class="map-viewport" id="viewport"><canvas id="map" tabindex="0" aria-label="参考画像に等高線を描くキャンバス"></canvas><div class="north" aria-hidden="true">北 ↑</div><span class="map-badge" id="imageName">参考画像</span></div>
+    <div class="map-footer"><span id="modeHelp">線を選び、点をドラッグして形を調整できます。</span><output id="position">画像座標</output></div>
+    <div class="concept-note" id="projectionNote">斜めの参考画像は、構想のための下図です。画像の遠近だけから実際の地形高を自動測定するものではありません。</div>
+    <section class="preview-section">
+      <div class="section-heading"><div><h2>高さのプレビュー</h2><p id="previewState">等高線と高さの点から、線の間を暫定的に補間します。</p></div><button id="makePreview">高さを確認</button></div>
+      <div class="preview-layout"><canvas id="preview" width="600" height="240" aria-label="設計した高さの色分けと立体の概略"></canvas><div class="preview-key"><div class="height-ramp"></div><div><strong id="maxLegend">高い</strong><span>標高（m）</span><strong id="minLegend">低い</strong></div></div></div>
+      <p class="small-note">右の立体図は形の確認用です。ゲームの地形・衝突・水面を変更しません。プレビューはボタンを押した時だけ更新します。</p>
+    </section>
+  </section>
+  <aside class="sidebar">
+    <section>
+      <div class="section-heading"><h2>等高線・高さの点</h2><span id="itemCount" class="count">0</span></div>
+      <div class="empty" id="emptyState">「等高線を描く」で、同じ高さの場所を囲みます。谷や池は、内側ほど低い高さを指定します。</div>
+      <button id="loadAIPlan" class="wide">AIの等高線を読み込む</button><input id="aiPlanFile" type="file" accept="application/json,.json" hidden>
+      <p class="small-note" id="aiImageSize"></p>
+      <div class="sample-controls"><label class="field">操作サンプル<select id="sampleKind"><option value="hill">高台</option><option value="valley">谷・池のくぼみ（0〜−5m）</option><option value="sunken">高台の中のくぼみ（8→2m）</option></select></label><button id="sample">見本を表示</button></div>
+      <div id="lineList" class="line-list" aria-label="等高線と点の一覧"></div>
+      <div id="selection" hidden>
+        <label class="field">名前 <input id="itemName" maxlength="60"></label>
+        <div class="two-cols"><label class="field">高さ（m）<input id="itemHeight" type="number" min="-100" max="200" step="0.5"></label><label class="field">線を丸める<input id="smoothing" type="range" min="0" max="1" step="0.1" value="0.8"></label></div>
+        <div id="openLineTools" class="connection-tools" hidden>
+          <label class="field">描き足す端<select id="extendEnd"><option value="end">終点から</option><option value="start">始点から</option></select></label>
+          <button id="continueLine">端から描き足す</button>
+          <button id="joinLines">近い端点と連結</button>
+          <p class="small-note">短い線は「閉じた線」を外して描きます。同じ高さの端点を近づけて連結すると、つなぎ目も滑らかになります。</p>
+        </div>
+        <div class="two-cols"><button id="duplicate">複製</button><button id="deleteItem" class="danger">削除</button></div>
+      </div>
+      <div class="two-cols spaced"><label class="field">次の線の間隔（m）<input id="interval" type="number" min="0.5" max="20" step="0.5" value="2"></label><button id="nextLevel">次の高さ ＋2m</button></div>
+      <label class="field">周囲の基準高（m）<input id="baseHeight" type="number" min="-100" max="200" step="0.5" value="0"></label>
+    </section>
+    <section>
+      <h2>見え方</h2>
+      <label class="field">背景の濃さ <input id="imageOpacity" type="range" min="0.15" max="1" step="0.05" value="0.85"></label>
+      <label class="check"><input id="showHeat" type="checkbox"> 高さの色を地図に重ねる</label>
+      <label class="check"><input id="showNodes" type="checkbox" checked> 選んだ線の編集点を表示</label>
+    </section>
+    <section>
+      <h2>地図とゲーム座標</h2>
+      <p class="small-note">「地図の範囲」で画像内の範囲を囲み、対応するゲーム座標を入力します。北が +Z です。</p>
+      <div class="two-cols"><label class="field">西 X<input id="xMin" type="number" value="-80"></label><label class="field">東 X<input id="xMax" type="number" value="80"></label><label class="field">南 Z<input id="zMin" type="number" value="-50"></label><label class="field">北 Z<input id="zMax" type="number" value="50"></label></div>
+      <label class="check projection-check"><input id="topDown" type="checkbox"> この画像は真上からの図で、範囲合わせ済みです</label>
+      <p class="small-note">斜めの絵は、設計JSON・注釈画像として保存できます。高さマップの出力には真上からの図を使ってください。</p>
+    </section>
+    <section>
+      <h2>書き出し</h2>
+      <button id="exportPng" class="wide">等高線入りの画像を保存</button>
+      <div class="two-cols spaced"><label class="field">最低高（m）<input id="rawMin" type="number" value="-8" step="0.5"></label><label class="field">最高高（m）<input id="rawMax" type="number" value="16" step="0.5"></label></div>
+      <label class="field">高さマップの解像度<select id="rawSize"><option value="129">129 × 129（軽量）</option><option value="257" selected>257 × 257</option><option value="513">513 × 513</option></select></label>
+      <button id="exportRaw" class="wide" disabled>16bit 高さマップを保存</button>
+      <p id="rawHelp" class="small-note">真上からの図の確認後に利用できます。</p>
+    </section>
+    <section class="validation"><h2>設計の確認</h2><div id="validation" role="status">等高線を追加してください。</div></section>
+    <details><summary>使い方・保存について</summary><p>クリックで点を置き、「線を確定」で仕上げます。閉じた線では始点をクリックして閉じることもできます。選択モードで点を動かせます。</p><p>短い線をつなぐときは「閉じた線」を外します。同じ高さの端点に近づくと目印が出て吸着します。線を選んで「近い端点と連結」、または「端から描き足す」で続けます。始点は緑、終点は橙の目印です。</p><p>ホイールで拡大縮小、スペースを押しながらドラッグで移動。⌘/Ctrl+Zで元に戻す、Deleteで選択を削除、Escで描画を取り消します。</p><p>作業はブラウザー内に自動保存します。別のPCへの移動や確実な保管には「設計を保存」で画像入りJSONを保存してください。</p><p>異なる高さの線が交差したり、同じ場所の高さが矛盾すると検出します。線間の形状は補間による案で、実地形の測量ではありません。</p></details>
+  </aside>
+</main>
+<div id="toast" role="status" hidden></div>
+<script src="default-map.js"></script><script src="geometry.js"></script><script src="ai-plan.js"></script><script src="files.js"></script><script src="samples.js"></script><script src="app.js"></script>
+</body>
+</html>

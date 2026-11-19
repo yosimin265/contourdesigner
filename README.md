@@ -28,6 +28,16 @@ node render-contours.cjs landscape.jpg example.ai-plan.json landscape-contours.s
 
 ![サンプルの風景イラストに等高線と標高を重ねた出力例](landscape-contours.png)
 
+## 完成した3Dマップ「丘とため池の里山」
+
+元絵と等高線で設計した丘とため池を、棚田・水路・茅葺きの集落まで含む3Dの里山として表現した作例です。「自由視点」で地形を回して眺め、「等高線」で高さの目安を重ねられます。
+
+![左手に丘、右手前にため池、右奥に集落と棚田が広がる完成版の3Dマップ](./satoyama-3d-preview.jpg)
+
+[完成版の3Dデータとソースをダウンロード（ZIP）](https://raw.githubusercontent.com/yosimin265/contourdesigner/main/satoyama_webgpu_source.zip)
+
+ZIPを展開し、そのフォルダーで `python3 -m http.server 8080` を実行して、ブラウザーで `http://localhost:8080/` を開きます。配布用の単一HTML版 `satoyama_standalone.html` と Three.js も同梱しています。
+
 ## 自分で描く・線をつなぐ
 
 **等高線を描く** で高さを指定し、点を順番に置きます。頂上や池の底は **高さの点** で示せます。谷の縁を 0 m、内側の斜面を −2 m、底を −5 m にすると、プレビューでくぼみを確認できます。
